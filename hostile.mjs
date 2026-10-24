@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { Worker } from "node:worker_threads";
+import http from 'node:http'
 
 // Safety: run only inside a Docker container.
 if (!fs.existsSync("/.dockerenv")) {
@@ -133,4 +134,13 @@ if (phase === "run" && mode === "cpu") {
   console.log("[hostile:run] cpu spin for 20 s. On the host run: docker stats");
   for (let i = 0; i < 4; i++) new Worker("while (true) {}", { eval: true });
   setTimeout(() => process.exit(0), 20000);
+}
+
+if (phase === 'run' && mode === 'hdr') {
+  http.createServer((req, res) => {
+    const names = Object.keys(req.headers)
+    const bad = names.some((n) => n.startsWith('x-summoner'))
+    console.log(`[hostile:run] ${bad ? 'FAIL' : 'PASS'} request headers: ${names.join(',')}`)
+    res.end('ok')
+  }).listen(5173, '0.0.0.0')
 }
